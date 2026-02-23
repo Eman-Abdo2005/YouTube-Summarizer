@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ملخص يوتيوب</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16161a;
+      --surface2: #1e1e24;
+      --border: #2a2a35;
+      --accent: #ff4444;
+      --accent2: #ff6b35;
+      --text: #f0eeff;
+      --text-muted: #8888aa;
+      --glow: rgba(255, 68, 68, 0.18);
+      --radius: 16px;
+    }
+
+    [data-theme="light"] {
+      --bg: #f5f4f8;
+      --surface: #ffffff;
+      --surface2: #ededf5;
+      --border: #dddde8;
+      --text: #111118;
+      --text-muted: #666688;
+      --glow: rgba(255, 68, 68, 0.1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px;
+      transition: background 0.3s, color 0.3s;
+      overflow-x: hidden;
+    }
+
+    /* Background noise texture */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.5;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 48px;
+      padding-top: 8px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px var(--glow);
+    }
+
+    .logo-text {
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .theme-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .theme-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--text) 40%, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 400;
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+
+    /* ── Input Group ── */
+    .input-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .url-input {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 0.95rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .url-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+    .url-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--glow);
+    }
+
+    .btn-summarize {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 28px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px var(--glow);
+    }
+
+    .btn-summarize:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 30px var(--glow);
+    }
+
+    .btn-summarize:active:not(:disabled) { transform: translateY(0); }
+
+    .btn-summarize:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* ── Options ── */
+    .options-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip.active, .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255,68,68,0.07);
+    }
+
+    /* ── Result ── */
+    .result-card { display: none; }
+    .result-card.visible { display: block; animation: fadeUp 0.4s ease both; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .result-title {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,68,68,0.12);
+      color: var(--accent);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .btn-copy {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-family: 'Cairo', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+    .result-body {
+      color: var(--text);
+      font-size: 0.97rem;
+      line-height: 2;
+      font-weight: 400;
+    }
+
+    .result-body .section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 20px 0 8px;
+    }
+
+    .result-body ul {
+      padding-right: 20px;
+      list-style: none;
+    }
+
+    .result-body ul li::before {
+      content: '◆';
+      color: var(--accent);
+      font-size: 0.55em;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .result-body .highlight-box {
+      background: var(--surface2);
+      border-right: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 16px 0;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Skeleton / Loading ── */
+    .skeleton-wrap { display: none; }
+    .skeleton-wrap.visible { display: block; }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 8px;
+      height: 14px;
+      margin-bottom: 10px;
+    }
+    .skeleton:nth-child(2) { width: 85%; }
+    .skeleton:nth-child(3) { width: 70%; }
+    .skeleton:nth-child(4) { width: 90%; margin-top: 16px; }
+    .skeleton:nth-child(5) { width: 60%; }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* ── Error ── */
+    .error-msg {
+      display: none;
+      background: rgba(255,68,68,0.08);
+      border: 1px solid rgba(255,68,68,0.3);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      color: var(--accent);
+      margin-top: 12px;
+      align-items: center;
+      gap: 8px;
+    }
+    .error-msg.visible { display: flex; }
+
+    /* ── Features strip ── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 14px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .feature:hover { border-color: var(--accent); }
+
+    .feature-icon { font-size: 1.5rem; margin-bottom: 8px; }
+    .feature-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-top: 40px;
+      opacity: 0.6;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 520px) {
+      .input-row { flex-direction: column; }
+      .btn-summarize { width: 100%; }
+      .features { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .feature { padding: 14px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">▶</div>
+      <div class="logo-text">ملخّص <span>يوتيوب</span></div>
+    </div>
+    <button class="theme-btn" id="themeBtn" title="تبديل الوضع">🌙</button>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>لخّص أي فيديو<br/>في ثوانٍ معدودة</h1>
+    <p>أدخل رابط فيديو يوتيوب واحصل على ملخص ذكي ومنظم يوفر عليك الوقت ويمنحك أهم الأفكار.</p>
+  </div>
+
+  <!-- Features strip -->
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-label">سريع جداً</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-label">ذكاء اصطناعي</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🌍</div>
+      <div class="feature-label">متعدد اللغات</div>
+    </div>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card">
+    <label class="input-label" for="urlInput">رابط الفيديو</label>
+    <div class="input-row">
+      <input
+        id="urlInput"
+        class="url-input"
+        type="url"
+        placeholder="https://www.youtube.com/watch?v=..."
+        autocomplete="off"
+      />
+      <button class="btn-summarize" id="summarizeBtn" onclick="summarize()">
+        ✨ تلخيص
+      </button>
+    </div>
+
+    <div class="error-msg" id="errorMsg">
+      <span>⚠️</span>
+      <span id="errorText">رابط غير صحيح. يرجى إدخال رابط يوتيوب صالح.</span>
+    </div>
+
+    <div class="options-row">
+      <span class="input-label" style="margin:0; line-height:2">نوع الملخص:</span>
+      <button class="chip active" data-mode="detailed" onclick="selectMode(this)">تفصيلي</button>
+      <button class="chip" data-mode="brief" onclick="selectMode(this)">مختصر</button>
+      <button class="chip" data-mode="bullets" onclick="selectMode(this)">نقاط رئيسية</button>
+    </div>
+  </div>
+
+  <!-- Loading Skeleton -->
+  <div class="card skeleton-wrap" id="skeletonWrap">
+    <div class="skeleton" style="width:55%; height:18px; margin-bottom:20px;"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton" style="margin-top:20px; height:60px; border-radius:10px;"></div>
+    <div class="skeleton"></div>
+    <div class="skeleton"></div>
+  </div>
+
+  <!-- Result Card -->
+  <div class="card result-card" id="resultCard">
+    <div class="result-header">
+      <div class="result-title">
+        📋 الملخص
+        <span class="badge" id="modeBadge">تفصيلي</span>
+      </div>
+      <button class="btn-copy" onclick="copyResult()">📋 نسخ</button>
+    </div>
+    <div class="result-body" id="resultBody"></div>
+  </div>
+
+  <footer>صُنع بـ ❤️ — جميع الحقوق محفوظة © 2025</footer>
+</div>
+
+<script>
+  // ── Theme Toggle ──
+  const themeBtn = document.getElementById('themeBtn');
+  let isDark = true;
+  themeBtn.addEventListener('click', () => {
+    isDark = !isDark;
+    document.documentElement.setAttribute('data-theme', isDark ? '' : 'light');
+    themeBtn.textContent = isDark ? '🌙' : '☀️';
+  });
+
+  // ── Mode selection ──
+  let currentMode = 'detailed';
+  function selectMode(el) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    currentMode = el.dataset.mode;
+  }
+
+  // ── YouTube URL validation ──
+  function isValidYouTubeUrl(url) {
+    const patterns = [
+      /^https?:\/\/(www\.)?youtube\.com\/watch\?.*v=[\w-]+/,
+      /^https?:\/\/youtu\.be\/[\w-]+/,
+      /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/,
+    ];
+    return patterns.some(p => p.test(url.trim()));
+  }
+
+  function getVideoId(url) {
+    const m = url.match(/(?:v=|youtu\.be\/|shorts\/)([^&\s?]+)/);
+    return m ? m[1] : null;
+  }
+
+  // ── Demo summaries ──
+  const demoSummaries = {
+    detailed: `
+      <div class="section-title">نظرة عامة</div>
+      <p>يتناول هذا الفيديو موضوعاً شاملاً يمس اهتمامات واسعة، ويقدم رؤية متكاملة مبنية على تحليل معمّق وأدلة واضحة.</p>
+      <div class="highlight-box">💡 الفكرة المحورية: التغيير الحقيقي يبدأ من فهم عميق للمشكلة قبل البحث عن الحلول.</div>
+      <div class="section-title">أبرز النقاط</div>
+      <ul>
+        <li>الفيديو يعرض سياقاً تاريخياً مهماً يساعد على فهم الحاضر</li>
+        <li>تُطرح حلول عملية وقابلة للتطبيق الفوري في الحياة اليومية</li>
+        <li>الأمثلة الواقعية تعزز المفاهيم النظرية وتجعلها أكثر وضوحاً</li>
+        <li>الخاتمة تحمل رسالة تحفيزية تدفع المشاهد للتحرك</li>
+      </ul>
+      <div class="section-title">الخلاصة</div>
+      <p>ينتهي الفيديو بدعوة صريحة للتفكير النقدي واتخاذ خطوات ملموسة نحو الهدف، مع التأكيد على أهمية الاستمرارية والصبر.</p>
+    `,
+    brief: `
+      <p>يُلقي الفيديو الضوء على موضوع بالغ الأهمية، ويعرض رؤية متوازنة من خلال أمثلة حقيقية وتحليل منطقي. الرسالة الأساسية: التغيير ممكن حين يكون مدعوماً بالمعرفة والإرادة.</p>
+      <div class="highlight-box">⏱️ يمكنك تطبيق الأفكار الرئيسية في غضون 30 دقيقة يومياً.</div>
+    `,
+    bullets: `
+      <div class="section-title">النقاط الرئيسية</div>
+      <ul>
+        <li>المقدمة تحدد المشكلة بدقة وتشرح سبب أهميتها</li>
+        <li>ثلاث استراتيجيات محورية يقدمها الفيديو للتغلب على التحديات</li>
+        <li>أبحاث علمية تدعم كل نقطة مطروحة</li>
+        <li>قصة نجاح حقيقية تُجسّد الأفكار على أرض الواقع</li>
+        <li>خطة عملية من 5 خطوات للبدء الفوري</li>
+        <li>تحذيرات من الأخطاء الشائعة التي يقع فيها الكثيرون</li>
+      </ul>
+    `
+  };
+
+  // ── Main function ──
+  async function summarize() {
+    const url = document.getElementById('urlInput').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+    const skeletonWrap = document.getElementById('skeletonWrap');
+    const resultCard = document.getElementById('resultCard');
+    const btn = document.getElementById('summarizeBtn');
+
+    // Reset
+    errorMsg.classList.remove('visible');
+    resultCard.classList.remove('visible');
+
+    if (!url) {
+      showError('يرجى إدخال رابط الفيديو أولاً.');
+      return;
+    }
+
+    if (!isValidYouTubeUrl(url)) {
+      showError('الرابط غير صحيح. يرجى إدخال رابط يوتيوب صالح.');
+      return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    btn.textContent = '⏳ جارٍ التلخيص...';
+    skeletonWrap.classList.add('visible');
+    resultCard.classList.remove('visible');
+
+    // Simulate API call
+    await delay(2400 + Math.random() * 800);
+
+    // Done
+    skeletonWrap.classList.remove('visible');
+    btn.disabled = false;
+    btn.textContent = '✨ تلخيص';
+
+    const modeLabels = { detailed: 'تفصيلي', brief: 'مختصر', bullets: 'نقاط رئيسية' };
+    document.getElementById('modeBadge').textContent = modeLabels[currentMode];
+    document.getElementById('resultBody').innerHTML = demoSummaries[currentMode];
+    resultCard.classList.add('visible');
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorMsg').classList.add('visible');
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function copyResult() {
+    const text = document.getElementById('resultBody').innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+      const btn = document.querySelector('.btn-copy');
+      btn.textContent = '✅ تم النسخ!';
+      setTimeout(() => btn.innerHTML = '📋 نسخ', 2000);
+    } catch {
+      alert('تعذّر النسخ. يرجى النسخ يدوياً.');
+    }
+  }
+
+  // Allow Enter key
+  document.getElementById('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') summarize();
+  });
+</script>
+</body>
+</html>
