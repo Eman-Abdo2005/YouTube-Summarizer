@@ -1,0 +1,21 @@
+{
+  "name": "yt-summarizer",
+  "version": "2.0.0",
+  "description": "ملخّص فيديوهات يوتيوب — Vercel Serverless",
+  "type": "module",
+  "scripts": {
+    "dev":   "vercel dev",
+    "build": "echo 'no build step'",
+    "test":  "node tests/summarize.test.js"
+  },
+  "dependencies": {
+    "youtube-transcript": "^1.2.1"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0",
+    "vercel":       "^37.0.0"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
