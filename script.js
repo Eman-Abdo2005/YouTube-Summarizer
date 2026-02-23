@@ -10,8 +10,7 @@
    ───────────────────────────────────────── */
 const CONFIG = {
   // عنوان الخادم — غيّره عند النشر على Vercel أو أي منصة أخرى
-  // محلي:   'http://localhost:3000'
-  // Vercel: '' (فارغ يعني نفس النطاق — /api/summarize)
+  // محلي:  'https://youtube-summarizer.vercel.app/api/summarize';
   API_BASE_URL: '',
 
   // مهلة الطلب بالمللي ثانية (60 ثانية)
