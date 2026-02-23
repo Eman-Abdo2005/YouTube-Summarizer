@@ -1,0 +1,10 @@
+{
+  "name": "yt-summarizer",
+  "version": "1.0.0",
+  "dependencies": {
+    "youtube-transcript": "^1.2.1"
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
