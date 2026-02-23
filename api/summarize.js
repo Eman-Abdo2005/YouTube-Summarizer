@@ -1,14 +1,15 @@
 // api/summarize.js — Vercel Serverless Function
-// CommonJS فقط (require / module.exports) — لا import / export
+// ESM (import/export) — مطلوب لأن youtube-transcript مكتبة ESM-only
 
-const { YoutubeTranscript } = require('youtube-transcript');
+import { YoutubeTranscript } from 'youtube-transcript';
 
 const MAX_WORDS        = 500;
 const MIN_SENTENCE_LEN = 40;
 const MAX_KEY_POINTS   = 5;
 
-// ─── نقطة الدخول ────────────────────────────────────────────
-module.exports = async function handler(req, res) {
+// ─── نقطة الدخول ─────────────────────────────────────────────────────────────
+export default async function handler(req, res) {
+  // CORS
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -16,30 +17,36 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   if (req.method !== 'POST') {
-    return res.status(405).json(err('METHOD_NOT_ALLOWED', 'يُقبل POST فقط.'));
+    return res.status(405).json(makeError('METHOD_NOT_ALLOWED', 'يُقبل POST فقط.'));
   }
 
-  const body      = req.body || {};
-  const videoId   = body.videoId || extractVideoId(body.url);
+  // ── استخراج المدخلات ──
+  const body    = req.body || {};
+  const videoId = body.videoId || extractVideoId(body.url || '');
 
   if (!videoId) {
-    return res.status(400).json(err('INVALID_INPUT', 'أرسل "url" أو "videoId" في جسم الطلب.'));
+    return res.status(400).json(
+      makeError('INVALID_INPUT', 'أرسل "url" أو "videoId" في جسم الطلب.')
+    );
   }
   if (!isValidVideoId(videoId)) {
-    return res.status(400).json(err('INVALID_VIDEO_ID', 'معرّف الفيديو غير صالح.'));
+    return res.status(400).json(
+      makeError('INVALID_VIDEO_ID', `معرّف الفيديو غير صالح: "${videoId}"`)
+    );
   }
 
+  // ── المعالجة الرئيسية ──
   try {
     const transcript = await getTranscript(videoId);
     const clipped    = clipToWords(transcript.fullText, MAX_WORDS);
     const summary    = buildSummary(clipped);
 
     return res.status(200).json({
-      success:  true,
+      success: true,
       videoId,
       thumbnail: {
-        high:   'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg',
-        maxres: 'https://img.youtube.com/vi/' + videoId + '/maxresdefault.jpg',
+        high:   `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        maxres: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
       },
       transcript: {
         language:   transcript.language,
@@ -62,10 +69,11 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     return handleError(e, res);
   }
-};
+}
 
-// ─── جلب نص الفيديو ─────────────────────────────────────────
+// ─── 1. جلب نص الفيديو ───────────────────────────────────────────────────────
 async function getTranscript(videoId) {
+  // جرّب اللغات بالترتيب: عربي أولاً ثم إنجليزي ثم غيرهم
   const langs = ['ar', 'en', 'fr', 'de', 'es', 'tr'];
   let segments = null;
   let usedLang = 'auto';
@@ -75,14 +83,18 @@ async function getTranscript(videoId) {
       segments = await YoutubeTranscript.fetchTranscript(videoId, { lang });
       usedLang = lang;
       break;
-    } catch (_) { /* جرّب اللغة التالية */ }
+    } catch {
+      // هذه اللغة غير متاحة، جرّب التالية
+    }
   }
 
+  // إن فشلت كل اللغات — دع يوتيوب يختار تلقائياً
   if (!segments) {
     try {
       segments = await YoutubeTranscript.fetchTranscript(videoId);
+      usedLang = 'auto';
     } catch (e) {
-      const msg = (e && e.message) || '';
+      const msg = e?.message ?? '';
       if (msg.includes('disabled') || msg.includes('Could not get')) {
         throw { code: 'NO_TRANSCRIPT', videoId };
       }
@@ -90,10 +102,11 @@ async function getTranscript(videoId) {
     }
   }
 
-  if (!segments || !segments.length) throw { code: 'NO_TRANSCRIPT', videoId };
+  if (!segments?.length) throw { code: 'NO_TRANSCRIPT', videoId };
 
+  // تنظيف وتجميع النص
   const fullText = segments
-    .map(function(s) { return cleanSegment(s.text); })
+    .map(s => cleanSegment(s.text))
     .filter(Boolean)
     .join(' ')
     .replace(/\s+/g, ' ')
@@ -101,15 +114,24 @@ async function getTranscript(videoId) {
 
   if (!fullText) throw { code: 'EMPTY_TRANSCRIPT', videoId };
 
-  return { fullText, language: usedLang, totalWords: countWords(fullText) };
+  return {
+    fullText,
+    language:   usedLang,
+    totalWords: countWords(fullText),
+  };
 }
 
-// ─── اقتطاع أول N كلمة ──────────────────────────────────────
+// ─── 2. اقتطاع أول N كلمة ────────────────────────────────────────────────────
 function clipToWords(text, maxWords) {
   const words = text.split(/\s+/).filter(Boolean);
-  if (words.length <= maxWords) return { text: text, wordCount: words.length };
+
+  if (words.length <= maxWords) {
+    return { text, wordCount: words.length };
+  }
 
   let clipped = words.slice(0, maxWords).join(' ');
+
+  // أنهِ عند آخر جملة كاملة إن أمكن
   const lastPunct = Math.max(
     clipped.lastIndexOf('.'),
     clipped.lastIndexOf('!'),
@@ -123,64 +145,69 @@ function clipToWords(text, maxWords) {
   return { text: clipped, wordCount: countWords(clipped) };
 }
 
-// ─── بناء الملخص بخوارزمية TF ───────────────────────────────
+// ─── 3. بناء الملخص (خوارزمية TF) ───────────────────────────────────────────
 function buildSummary(clipped) {
-  const text      = clipped.text;
-  const sentences = splitSentences(text).filter(function(s) {
-    return s.length >= MIN_SENTENCE_LEN;
-  });
+  const { text } = clipped;
+  const sentences = splitSentences(text).filter(s => s.length >= MIN_SENTENCE_LEN);
 
+  // إن لم توجد جمل كافية — أرجع النص مباشرة
   if (!sentences.length) {
     return { shortSummary: text.slice(0, 300), keyPoints: [], topics: [], sentenceCount: 0 };
   }
 
   const wordFreq = computeWordFreq(text);
 
-  const scored = sentences.map(function(sentence, index) {
-    return {
-      sentence: sentence,
-      index:    index,
-      score:    scoreSentence(sentence, wordFreq, index, sentences.length),
-    };
-  });
+  // احسب درجة كل جملة
+  const scored = sentences.map((sentence, index) => ({
+    sentence,
+    index,
+    score: scoreSentence(sentence, wordFreq, index, sentences.length),
+  }));
 
-  const sorted = scored.slice().sort(function(a, b) { return b.score - a.score; });
+  const sorted = [...scored].sort((a, b) => b.score - a.score);
 
+  // أفضل N جملة = الملخص (مرتبة بترتيبها الأصلي)
   const topN = Math.min(3, Math.max(1, Math.floor(sentences.length / 4)));
   const shortSummary = sorted
     .slice(0, topN)
-    .sort(function(a, b) { return a.index - b.index; })
-    .map(function(s) { return s.sentence; })
+    .sort((a, b) => a.index - b.index)
+    .map(s => s.sentence)
     .join(' ')
     .trim();
 
+  // الجمل التالية = النقاط الرئيسية
   const keyPoints = sorted
     .slice(topN, topN + MAX_KEY_POINTS)
-    .sort(function(a, b) { return a.index - b.index; })
-    .map(function(s) { return formatPoint(s.sentence); });
+    .sort((a, b) => a.index - b.index)
+    .map(s => formatPoint(s.sentence));
 
   return {
-    shortSummary:  shortSummary,
-    keyPoints:     keyPoints,
+    shortSummary,
+    keyPoints,
     topics:        extractTopics(wordFreq),
     sentenceCount: sentences.length,
   };
 }
 
-// ─── دوال مساعدة للتلخيص ────────────────────────────────────
+// ─── دوال مساعدة للتلخيص ─────────────────────────────────────────────────────
 function splitSentences(text) {
-  return text.split(/[.!?؟]\s+/).map(function(s) { return s.trim(); }).filter(Boolean);
+  return text
+    .split(/[.!?؟]\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
 }
 
 function computeWordFreq(text) {
-  const stopWords = new Set([
+  const stop = new Set([
+    // عربية
     'في','من','إلى','على','عن','مع','هذا','هذه','التي','الذي','كان','كانت',
     'هو','هي','هم','نحن','أنت','أنا','لا','ما','هل','إن','أن','كما','أو',
     'قد','لقد','كل','فقط','أيضا','ثم','لم','لن','ليس','عند','بعد','قبل',
-    'the','a','an','is','are','was','were','be','have','has','had','do',
-    'does','did','will','would','could','should','can','to','of','in','on',
-    'at','by','for','with','and','or','but','not','it','its','this','that',
-    'we','they','he','she','you','i','my','our','your','their'
+    // إنجليزية
+    'the','a','an','is','are','was','were','be','have','has','had',
+    'do','does','did','will','would','could','should','can','to','of',
+    'in','on','at','by','for','with','and','or','but','not','it','its',
+    'this','that','we','they','he','she','you','i','my','our','your','their',
   ]);
 
   const freq = {};
@@ -188,45 +215,42 @@ function computeWordFreq(text) {
     .toLowerCase()
     .replace(/[^\u0600-\u06FFa-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter(function(w) { return w.length > 3 && !stopWords.has(w); })
-    .forEach(function(w) { freq[w] = (freq[w] || 0) + 1; });
+    .filter(w => w.length > 3 && !stop.has(w))
+    .forEach(w => { freq[w] = (freq[w] || 0) + 1; });
 
   return freq;
 }
 
-function scoreSentence(sentence, wordFreq, index, total) {
+function scoreSentence(sentence, freq, index, total) {
   const words = sentence
     .toLowerCase()
     .replace(/[^\u0600-\u06FFa-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter(function(w) { return w.length > 3; });
+    .filter(w => w.length > 3);
 
   if (!words.length) return 0;
 
-  const freqScore = words.reduce(function(sum, w) {
-    return sum + (wordFreq[w] || 0);
-  }, 0) / words.length;
+  const freqScore    = words.reduce((s, w) => s + (freq[w] || 0), 0) / words.length;
+  const posBonus     = (index === 0 || index === total - 1) ? 1.3
+                     : index < total * 0.2 ? 1.15 : 1.0;
+  const lenPenalty   = sentence.length < 50 ? 0.7 : sentence.length > 300 ? 0.85 : 1.0;
 
-  const posBonus  = (index === 0 || index === total - 1) ? 1.3
-                  : (index < total * 0.2) ? 1.15 : 1.0;
-  const lenPenal  = sentence.length < 50 ? 0.7 : sentence.length > 300 ? 0.85 : 1.0;
-
-  return freqScore * posBonus * lenPenal;
+  return freqScore * posBonus * lenPenalty;
 }
 
-function extractTopics(wordFreq) {
-  return Object.entries(wordFreq)
-    .sort(function(a, b) { return b[1] - a[1]; })
+function extractTopics(freq) {
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
-    .map(function(e) { return e[0].charAt(0).toUpperCase() + e[0].slice(1); });
+    .map(([w]) => w.charAt(0).toUpperCase() + w.slice(1));
 }
 
-function formatPoint(sentence) {
-  const t = sentence.length > 150 ? sentence.slice(0, 147) + '...' : sentence;
+function formatPoint(s) {
+  const t = s.length > 150 ? s.slice(0, 147) + '...' : s;
   return /[.!?؟]$/.test(t) ? t : t + '.';
 }
 
-// ─── دوال التحقق والمساعدة العامة ───────────────────────────
+// ─── دوال مساعدة عامة ────────────────────────────────────────────────────────
 function extractVideoId(url) {
   if (!url || typeof url !== 'string') return null;
   const patterns = [
@@ -237,8 +261,8 @@ function extractVideoId(url) {
     /live\/([\w-]{11})/,
     /^([\w-]{11})$/,
   ];
-  for (var i = 0; i < patterns.length; i++) {
-    var m = url.trim().match(patterns[i]);
+  for (const p of patterns) {
+    const m = url.trim().match(p);
     if (m) return m[1];
   }
   return null;
@@ -249,8 +273,8 @@ function isValidVideoId(id) {
 }
 
 function cleanSegment(text) {
-  return (text || '')
-    .replace(/\[.*?\]/g, '')
+  return (text ?? '')
+    .replace(/\[.*?\]/g, '')   // يزيل [موسيقى] [تصفيق]
     .replace(/\(.*?\)/g, '')
     .replace(/&#\d+;/g, ' ')
     .replace(/&\w+;/g, ' ')
@@ -262,29 +286,37 @@ function countWords(text) {
   return text.split(/\s+/).filter(Boolean).length;
 }
 
-function err(code, message) {
-  return { success: false, error: { code: code, message: message }, timestamp: new Date().toISOString() };
+function makeError(code, message) {
+  return {
+    success:   false,
+    error:     { code, message },
+    timestamp: new Date().toISOString(),
+  };
 }
 
 function handleError(e, res) {
-  const map = {
+  // أخطاء معروفة من getTranscript
+  const knownErrors = {
     NO_TRANSCRIPT:    { status: 404, message: 'لا تتوفر ترجمة لهذا الفيديو. تأكد أن الفيديو يحتوي على ترجمة (CC).' },
-    EMPTY_TRANSCRIPT: { status: 422, message: 'الترجمة فارغة أو لا تحتوي على نص.' },
+    EMPTY_TRANSCRIPT: { status: 422, message: 'الترجمة فارغة أو لا تحتوي على نص صالح.' },
     VIDEO_UNAVAILABLE:{ status: 404, message: 'الفيديو غير متاح أو محذوف.' },
   };
 
-  if (e && e.code && map[e.code]) {
-    return res.status(map[e.code].status).json(err(e.code, map[e.code].message));
+  if (e?.code && knownErrors[e.code]) {
+    const { status, message } = knownErrors[e.code];
+    return res.status(status).json(makeError(e.code, message));
   }
 
-  const msg = (e && e.message) || '';
+  // أخطاء نصية من مكتبة youtube-transcript
+  const msg = e?.message ?? '';
   if (msg.includes('disabled') || msg.includes('Could not get transcript')) {
-    return res.status(404).json(err('NO_TRANSCRIPT', 'لا تتوفر ترجمة لهذا الفيديو.'));
+    return res.status(404).json(makeError('NO_TRANSCRIPT', 'لا تتوفر ترجمة لهذا الفيديو.'));
   }
   if (msg.includes('not found') || msg.includes('unavailable')) {
-    return res.status(404).json(err('VIDEO_UNAVAILABLE', 'الفيديو غير متاح.'));
+    return res.status(404).json(makeError('VIDEO_UNAVAILABLE', 'الفيديو غير متاح.'));
   }
 
-  console.error('[summarize]', e);
-  return res.status(500).json(err('INTERNAL_ERROR', 'حدث خطأ داخلي. يرجى المحاولة مجدداً.'));
+  // خطأ غير متوقع
+  console.error('[/api/summarize]', e);
+  return res.status(500).json(makeError('INTERNAL_ERROR', 'حدث خطأ داخلي. يرجى المحاولة مجدداً.'));
 }
