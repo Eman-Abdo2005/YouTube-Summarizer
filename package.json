@@ -1,21 +1,21 @@
 {
   "name": "yt-summarizer",
-  "version": "1.0.0",
-  "description": "ملخّص فيديوهات يوتيوب بالعربية — Node.js + Claude AI",
+  "version": "2.0.0",
+  "description": "ملخّص فيديوهات يوتيوب — Vercel Serverless",
   "type": "module",
-  "main": "server.js",
   "scripts": {
-    "start":   "node server.js",
-    "dev":     "node --watch server.js"
+    "dev":   "vercel dev",
+    "build": "echo 'no build step'",
+    "test":  "node tests/summarize.test.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk":  "^0.30.0",
-    "cors":               "^2.8.5",
-    "dotenv":             "^16.4.5",
-    "express":            "^4.19.2",
     "youtube-transcript": "^1.2.1"
   },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0",
+    "vercel":       "^37.0.0"
+  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.x"
   }
 }
